@@ -241,8 +241,12 @@ class ExtractTask extends CoreExtractTask
 
         foreach ($this->_languages as $locale) {
             $found = $model->find()
-                ->where(compact('domain', 'locale', 'singular'))
-                ->count();
+                    ->where([
+                        'domain' => $domain,
+                        'locale' => $locale,
+                        'singular LIKE BINARY ' => $singular
+                    ])
+                    ->count();
 
             if (!$found) {
                 $entity = $model->newEntity(compact(
