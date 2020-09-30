@@ -1,5 +1,5 @@
 {
-    "name": "admad/cakephp-i18n",
+    "name": "simtecsystem/cakephp-i18n",
     "description": "A CakePHP plugin for I18n related tools.",
     "type": "cakephp-plugin",
     "keywords": [
@@ -9,7 +9,7 @@
         "validation",
         "routing"
     ],
-    "homepage": "https://github.com/ADmad/cakephp-i18n",
+    "homepage": "https://github.com/simtecsystem/cakephp-i18n",
     "authors": [
         {
             "name":"ADmad",
