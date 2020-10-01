@@ -160,6 +160,8 @@ class ExtractTask extends CoreExtractTask
             $this->out('   ' . $path);
         }
         $this->hr();
+        
+        $this->out('Extract tokens:');
         $this->_extractTokens();
 
         $this->_languages();
@@ -178,6 +180,8 @@ class ExtractTask extends CoreExtractTask
      */
     protected function _write()
     {
+        $model = $this->_model();
+
         $paths = $this->_paths;
         $paths[] = realpath(APP) . DIRECTORY_SEPARATOR;
 
@@ -185,18 +189,43 @@ class ExtractTask extends CoreExtractTask
             return strlen($a) - strlen($b);
         });
 
+        // alle domains
+        $condition = [];
+
         $domains = null;
         if (!empty($this->params['domains'])) {
             $domains = explode(',', $this->params['domains']);
+            // nur ausgewählte domains
+            $condition[
+                'domain IN'
+            ] = $domains;
         }
 
+        // set found_in_code = 0 on all entities 
+        $allI18nEntities = $model->find()->where($condition);
+        if ($allI18nEntities->count()) {
+            foreach ($allI18nEntities as $oneEntity) {
+                $oneEntity->found_in_code = 0;
+                $model->save($oneEntity);
+            }
+        }
+        
+        $this->hr();
         foreach ($this->_translations as $domain => $translations) {
             if (!empty($domains) && !in_array($domain, $domains)) {
                 continue;
             }
+
+            $this->out();
+            $this->out($domain . ':');
+            /** @var \Cake\Shell\Helper\ProgressHelper $progress */
+            $progress = $this->helper('progress');
+            $progress->init(['total' => count($translations)]);
+
             if ($this->_merge) {
                 $domain = 'default';
             }
+            
             foreach ($translations as $msgid => $contexts) {
                 foreach ($contexts as $context => $details) {
                     $references = null;
@@ -220,7 +249,16 @@ class ExtractTask extends CoreExtractTask
                         $references
                     );
                 }
+                $progress->increment(1);
+                $progress->draw();
             }
+
+            // lösch alles was nicht im code gefunden worden ist + vorherige bedingungen
+            //$condition[
+            //    'found_in_code'
+            //] = 0;
+
+            //$model->deleteAll($condition);
         }
     }
 
@@ -240,15 +278,25 @@ class ExtractTask extends CoreExtractTask
         $model = $this->_model();
 
         foreach ($this->_languages as $locale) {
-            $found = $model->find()
-                    ->where([
-                        'domain' => $domain,
-                        'locale' => $locale,
-                        'singular LIKE BINARY ' => $singular
-                    ])
-                    ->count();
+            // search for matches
+            $found = $model
+            ->find()
+            ->where([
+                'domain' => $domain,
+                'locale' => $locale,
+                'singular LIKE BINARY ' => $singular
+            ]);
 
-            if (!$found) {
+            // found_in_code = 1
+            if ($found->count()) {
+                foreach ($found as $i18n) {
+                    $i18n->found_in_code = 1;
+                    $model->save($i18n);
+                }
+            }
+
+            // new
+            if (!$found->count()) {
                 $entity = $model->newEntity(compact(
                     'domain',
                     'locale',
@@ -257,6 +305,8 @@ class ExtractTask extends CoreExtractTask
                     'context',
                     'refs'
                 ), ['guard' => false]);
+
+                $entity->found_in_code = 1;
 
                 $model->save($entity);
             }
