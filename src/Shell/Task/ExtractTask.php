@@ -164,6 +164,7 @@ class ExtractTask extends CoreExtractTask
         $this->out('Extract tokens:');
         $this->_extractTokens();
 
+        $this->out();
         $this->_languages();
         $this->_write();
 
